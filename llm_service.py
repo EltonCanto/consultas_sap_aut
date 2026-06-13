@@ -36,6 +36,11 @@ REGRAS DE CONTEXTO E GERAÇÃO:
 3. Use o padrão exigido: "- Título: ??? - Consulta - Descrição" no topo do seu código como comentário (ex: -- - Título: ...).
 4. Retorne APENAS o código SQL ou a View (sem marcações markdown como ```sql fora do padrão, se possível, ou retorne apenas o bloco markdown). Mas como o Streamlit lida bem com markdown, você deve explicar brevemente e fornecer o código em um bloco ```sql ... ```.
 5. Sempre inclua uma sugestão de TÍTULO e DESCRIÇÃO no início do bloco de código como comentários.
+6. Ao final da sua resposta, OBRIGATORIAMENTE adicione um bloco listando as tabelas e as regras de negócio utilizadas, envolvido pelas tags <AUDITORIA> e </AUDITORIA>. Exemplo:
+<AUDITORIA>
+**Tabelas Utilizadas:** OINV, INV1, OCRD
+**Regras Aplicadas:** [SEGURANÇA READ-ONLY], [REGRA_FILIAL_TERESOPOLIS]
+</AUDITORIA>
 """
 
     contents = []
@@ -44,7 +49,9 @@ REGRAS DE CONTEXTO E GERAÇÃO:
     if chat_history:
         for msg in chat_history:
             role = 'user' if msg['role'] == 'user' else 'model'
-            contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg['content'])]))
+            # Evitar enviar tags de auditoria no histórico se houver
+            clean_content = re.sub(r'<AUDITORIA>.*?</AUDITORIA>', '', msg['content'], flags=re.DOTALL | re.IGNORECASE)
+            contents.append(types.Content(role=role, parts=[types.Part.from_text(text=clean_content)]))
             
     # Adicionar o prompt atual
     contents.append(types.Content(role='user', parts=[types.Part.from_text(text=user_prompt)]))
@@ -72,17 +79,24 @@ REGRAS DE CONTEXTO E GERAÇÃO:
 
 def extract_code_and_metadata(response_text: str):
     """
-    Tenta extrair o código SQL/View, título e descrição da resposta do Gemini.
+    Tenta extrair o código SQL/View, título, descrição e bloco de auditoria da resposta do Gemini.
     """
-    # Lógica simplificada: extrair o que está dentro do bloco ```sql ... ```
     import re
-    code_match = re.search(r'```sql\n(.*?)\n```', response_text, re.DOTALL)
     
+    # Extrai auditoria e limpa a resposta
+    auditoria = ""
+    auditoria_match = re.search(r'<AUDITORIA>(.*?)</AUDITORIA>', response_text, re.DOTALL | re.IGNORECASE)
+    if auditoria_match:
+        auditoria = auditoria_match.group(1).strip()
+    
+    resposta_limpa = re.sub(r'<AUDITORIA>.*?</AUDITORIA>', '', response_text, flags=re.DOTALL | re.IGNORECASE).strip()
+
+    # Extrai o código
+    code_match = re.search(r'```sql\n(.*?)\n```', resposta_limpa, re.DOTALL)
     if code_match:
         codigo = code_match.group(1).strip()
     else:
-        # Se não usar markdown, pegar o texto todo (limpando o possível começo)
-        codigo = response_text.replace("```sql", "").replace("```", "").strip()
+        codigo = resposta_limpa.replace("```sql", "").replace("```", "").strip()
 
     titulo = "Consulta Gerada"
     descricao = "Gerada por IA"
@@ -93,4 +107,4 @@ def extract_code_and_metadata(response_text: str):
         titulo = padrao.group(1).strip()
         descricao = padrao.group(2).strip()
 
-    return titulo, descricao, codigo
+    return titulo, descricao, codigo, auditoria, resposta_limpa

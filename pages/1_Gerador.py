@@ -37,18 +37,19 @@ if prompt := st.chat_input("Descreva a consulta ou view que você precisa..."):
         with st.spinner("Analisando pedido e buscando contexto (isso pode levar alguns segundos)..."):
             try:
                 resposta = generate_sap_code(prompt, tipo, contexto, st.session_state.messages[:-1])
-                st.markdown(resposta)
                 
                 # Extrair código e metadados para facilitar cópia/salvamento
-                titulo, descricao, codigo = extract_code_and_metadata(resposta)
+                titulo, descricao, codigo, auditoria, resposta_limpa = extract_code_and_metadata(resposta)
                 
-                st.session_state.messages.append({"role": "model", "content": resposta})
+                st.markdown(resposta_limpa)
+                st.session_state.messages.append({"role": "model", "content": resposta_limpa})
                 
                 # Armazenar no session_state temporário para os botões funcionarem
                 st.session_state['last_code'] = codigo
                 st.session_state['last_title'] = titulo
                 st.session_state['last_desc'] = descricao
                 st.session_state['last_type'] = tipo
+                st.session_state['last_auditoria'] = auditoria
                 
             except Exception as e:
                 st.error(f"Erro ao gerar código: {e}")
@@ -56,6 +57,11 @@ if prompt := st.chat_input("Descreva a consulta ou view que você precisa..."):
 # Opções para a última resposta gerada
 if 'last_code' in st.session_state and st.session_state['last_code']:
     st.divider()
+    
+    if st.session_state.get('last_auditoria'):
+        with st.expander("🔍 Auditoria: Tabelas e Regras de Negócio", expanded=False):
+            st.info(st.session_state['last_auditoria'])
+            
     st.subheader("Código Gerado (pronto para copiar)")
     st.code(st.session_state['last_code'], language="sql")
 
