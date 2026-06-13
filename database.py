@@ -74,3 +74,6 @@ def search_queries(search_term: str = "", start_date=None, end_date=None):
         }
         for r in rows
     ]
+
+# Garante que o banco seja inicializado ao importar o módulo
+init_db()
