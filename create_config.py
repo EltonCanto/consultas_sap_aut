@@ -1,7 +1,7 @@
 import yaml
 try:
     import bcrypt
-    pwd = bcrypt.hashpw(b'admin', bcrypt.gensalt()).decode('utf-8')
+    pwd = bcrypt.hashpw(b'nio@102030', bcrypt.gensalt()).decode('utf-8')
 except ImportError:
     # Fallback caso não consiga instalar bcrypt agora (o authenticator vai precisar dele de qualquer forma)
     pwd = 'abc' # Isso fará o login falhar, mas o arquivo será criado.
@@ -9,9 +9,9 @@ except ImportError:
 config = {
     'credentials': {
         'usernames': {
-            'admin': {
+            'nio_admin': {
                 'email': 'admin@admin.com',
-                'name': 'Admin',
+                'name': 'Administrador',
                 'password': pwd
             }
         }
