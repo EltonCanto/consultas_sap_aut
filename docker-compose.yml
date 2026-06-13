@@ -10,6 +10,10 @@ services:
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
     volumes:
-      - ./consultas.db:/app/consultas.db
-      - ./knowledge_base:/app/knowledge_base
+      - db_data:/app/data
+      - kb_data:/app/knowledge_base
     restart: unless-stopped
+
+volumes:
+  db_data:
+  kb_data:

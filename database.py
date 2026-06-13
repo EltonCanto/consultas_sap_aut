@@ -2,7 +2,9 @@ import sqlite3
 import datetime
 from pathlib import Path
 
-DB_FILE = "consultas.db"
+DB_DIR = Path("data")
+DB_DIR.mkdir(exist_ok=True)
+DB_FILE = str(DB_DIR / "consultas.db")
 
 def get_connection():
     return sqlite3.connect(DB_FILE, check_same_thread=False)
