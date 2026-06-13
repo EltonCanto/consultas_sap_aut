@@ -3,6 +3,7 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 from kb_manager import get_business_rules
+import re
 
 load_dotenv()
 
