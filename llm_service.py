@@ -55,13 +55,20 @@ REGRAS DE CONTEXTO E GERAÇÃO:
         tools=[types.Tool(google_search=types.GoogleSearch())]
     )
 
-    response = client.models.generate_content(
-        model=model_name,
-        contents=contents,
-        config=config
-    )
-    
-    return response.text
+    import time
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=contents,
+                config=config
+            )
+            return response.text
+        except Exception as e:
+            if "429" in str(e) and attempt < 2:
+                time.sleep(35) # Espera 35 segundos para a cota ser resetada
+            else:
+                raise e
 
 def extract_code_and_metadata(response_text: str):
     """
