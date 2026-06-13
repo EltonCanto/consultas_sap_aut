@@ -62,9 +62,6 @@ if 'last_code' in st.session_state and st.session_state['last_code']:
         with st.expander("🔍 Auditoria: Tabelas e Regras de Negócio", expanded=False):
             st.info(st.session_state['last_auditoria'])
             
-    st.subheader("Código Gerado (pronto para copiar)")
-    st.code(st.session_state['last_code'], language="sql")
-
     st.subheader("Ações")
     
     col1, col2 = st.columns(2)
