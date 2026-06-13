@@ -10,8 +10,17 @@ if "authentication_status" not in st.session_state or not st.session_state["auth
 
 st.title("✨ Gerador de Consultas e Views")
 
+def clear_state():
+    if "messages" in st.session_state:
+        st.session_state.messages = []
+    for key in ['last_code', 'last_title', 'last_desc', 'last_type', 'last_auditoria']:
+        if key in st.session_state:
+            del st.session_state[key]
+    if "show_save_form" in st.session_state:
+        st.session_state["show_save_form"] = False
+
 # Configurações na barra lateral
-tipo = st.radio("O que você deseja gerar?", ["SQL", "View"], horizontal=True)
+tipo = st.radio("O que você deseja gerar?", ["SQL", "View"], horizontal=True, on_change=clear_state)
 
 # Histórico da conversa
 if "messages" not in st.session_state:
