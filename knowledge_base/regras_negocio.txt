@@ -1,0 +1,38 @@
+# CONTEXTO GLOBAL DE REGRAS DE NEGÓCIO - SAP B1
+
+## 1. ESCOPO DE FILIAIS E CENTROS DE APURAÇÃO
+[REGRA_FILIAL_TERESOPOLIS]:
+- SE (BPLId EM (3, 4, 6, 7, 10)) OU (WhsCode COMEÇA COM ('03', '04', '06', '07', '10')) 
+  ENTÃO Centro_Apuracao = 'TERESÓPOLIS'
+
+[REGRA_FILIAL_NORDESTE]:
+- SE (BPLId EM (1, 9)) OU (WhsCode COMEÇA COM ('01', '02', '09')) 
+  ENTÃO Centro_Apuracao = 'NORDESTE / RECIFE'
+
+[REGRA_FILIAL_RDU]:
+- SE (BPLId EM (5, 8)) OU (WhsCode COMEÇA COM ('05', '08')) 
+  ENTÃO Centro_Apuracao = 'RDU / PARANÁ / FARMS'
+
+## 2. MAPEAMENTO DE FLUXOS POR UTILIZAÇÃO (OUSG / USAGE)
+[FLUXO_COMPRA_MATERIA_PRIMA]:
+- Condicao: Usage IN (19, 47) AND ItmsGrpCod IN (119, 120, 121, 122, 123, 124, 125, 131, 137)
+- Restricao: Ignorar se Usage = 50 (Devolução Paga).
+
+[FLUXO_DEVOLUCAO_PAGA]:
+- Condicao: Usage = 50 aplicados na tabela OPCH / PCH1.
+- Regra Contábil: Se TrsfrAcct == '1.01.03.02.01' usar DocDueDate como data_pagamento, senão usar DocDate.
+
+[FLUXO_NOTA_GRATUITA_BONIFICACAO]:
+- Condicao: Usage = 18 OU coluna OUSG.FreeChrgBP = 'Y'.
+
+[FLUXO_ACORDOS_E_DESCONTOS]:
+- Condicao: Usage = 58 (Desconto de fornecedor em devoluções) OU Usage IN (53, 60) (Acordos e ressarcimentos).
+
+## 3. ENTIDADES DE CONTROLE INTERNO (INTERCOMPANY)
+[FILTRO_INTERCOMPANY]:
+- Regra de Junção: Validar PNs associados através de INNER JOIN na tabela customizada '@PARC_INTERCOMPANY'.
+
+## 4. DIRETRIZES DE SINTAXE E HIGIENE DE DADOS para IA
+- [INTEGRIDADE]: Sempre aplicar o filtro `CANCELED = 'N'` (ou `Canceled = 'N'` dependendo da tabela de destino do SAP) para remover documentos excluídos.
+- [HIGIENE CONTÁBIL]: Ignorar lançamentos manuais ou ajustes quando a coluna customizada `U_NotaAjusteInterno` for igual a 'Y'.
+- [PADRÃO HANA]: Escrever os nomes das tabelas e colunas em maiúsculo e obrigatoriamente envolvidos por aspas duplas (Ex: T0."CardCode", OPCH T0).

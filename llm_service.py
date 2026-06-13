@@ -2,6 +2,7 @@ import os
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
+from kb_manager import get_business_rules
 
 load_dotenv()
 
@@ -17,11 +18,15 @@ def generate_sap_code(user_prompt: str, tipo: str, contexto_modelos: str, chat_h
     """
     client = get_client()
     model_name = 'gemini-2.5-flash' # atualizado para modelo disponível no plano gratuito
+    regras_negocio = get_business_rules()
     
     system_instruction = f"""Você é um especialista em SAP Business One (SAP B1).
 Sua tarefa é gerar ou melhorar um código de {tipo} baseado no pedido do usuário.
 
-REGRAS:
+REGRAS GLOBAIS DE NEGÓCIO:
+{regras_negocio}
+
+REGRAS DE CONTEXTO E GERAÇÃO:
 1. Analise o seguinte contexto (modelos fornecidos pelo usuário) e tente basear sua resposta nas estruturas, nomes de tabelas (ex: OINV, INV1, OCRD, etc) e padrões presentes lá:
 --- INÍCIO DOS MODELOS ---
 {contexto_modelos}

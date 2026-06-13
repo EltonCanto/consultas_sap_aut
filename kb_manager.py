@@ -4,6 +4,12 @@ from pathlib import Path
 KB_DIR = Path("knowledge_base")
 MODELO_SQL_PATH = KB_DIR / "modelo_sql.txt"
 MODELO_VIEW_PATH = KB_DIR / "modelo_view.txt"
+REGRAS_NEGOCIO_PATH = KB_DIR / "regras_negocio.txt"
+
+def get_business_rules() -> str:
+    if REGRAS_NEGOCIO_PATH.exists():
+        return REGRAS_NEGOCIO_PATH.read_text(encoding="utf-8")
+    return ""
 
 def init_kb():
     os.makedirs(KB_DIR, exist_ok=True)
