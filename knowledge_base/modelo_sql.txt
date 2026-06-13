@@ -1,0 +1,133 @@
+-- Colecione suas consultas SQL aqui.
+-- Formato:
+-- - Título: Exemplo
+-- - Consulta - Descrição detalhada
+
+
+
+-- - Título: Relatório movimentação de compras mp Teresópolis SAP - (0239)
+-- - Consulta - Esta consulta tem como finalidade realizar o acompanhamento completo do processo de compras no SAP Business One, desde a emissão do pedido de compra até o recebimento físico da mercadoria, lançamento da nota fiscal de entrada e eventuais devoluções. O relatório permite identificar saldos pendentes de recebimento e divergências entre os documentos do processo de suprimentos.
+-- - Consulta:
+WITH PEDIDOS AS (
+SELECT 
+    T0."DocDate",
+    T0."DocNum",
+    T0."ObjType",
+    T0."CardCode", 
+    T0."CardName",
+    T2."ItemCode",  
+    T2."ItemName", 
+    T3."ItmsGrpNam",
+    SUM(T1."Quantity") AS "PEDIDO"
+FROM OPOR T0
+INNER JOIN POR1 T1 ON T0."DocEntry" = T1."DocEntry" 
+INNER JOIN OITM T2 ON T1."ItemCode" = T2."ItemCode" 
+INNER JOIN OITB T3 ON T2."ItmsGrpCod" = T3."ItmsGrpCod" 
+WHERE T0."TaxDate" BETWEEN [%1] AND [%2] AND T0."BPLId" IN (3, 4, 6, 10) AND T0."CANCELED" ='N'
+GROUP BY 
+    T0."DocDate", T0."DocNum", T0."ObjType", T0."CardCode", T0."CardName", 
+    T2."ItemCode", T2."ItemName", T3."ItmsGrpNam"
+
+), RECEBIMENTOS_DOC_NUM AS (
+    SELECT 
+
+        DISTINCT T0."DocNum"
+   
+    
+    FROM OPDN T0
+    INNER JOIN PDN1 T1 ON T0."DocEntry" = T1."DocEntry" 
+    INNER JOIN OITM T2 ON T1."ItemCode" = T2."ItemCode" 
+    INNER JOIN OITB T3 ON T2."ItmsGrpCod" = T3."ItmsGrpCod" 
+    WHERE   T0."BPLId" IN (3, 4, 6, 10) AND T0."U_NotaAjusteInterno" = 'N' AND TO_VARCHAR(T1."BaseRef") in (select TO_VARCHAR(T00."DocNum") FROM PEDIDOS T00)  AND T0."CANCELED" ='N'
+    GROUP BY   T1."ItemCode", T1."BaseRef",  T0."DocNum",      T1."BaseLine",T1."LineNum"
+), NF_ENTRADA AS (
+    SELECT 
+        T1."ItemCode",
+        T1."BaseRef",
+        T1."BaseLine",
+        T0."DocNum",
+        SUM(T1."Quantity") AS "TotalQuantity" , 
+       (SELECT SUM(T01."Quantity") FROM ORPC T00 INNER JOIN RPC1 T01 ON T01."DocEntry" = T00."DocEntry" WHERE TO_VARCHAR(T01."BaseRef") = TO_VARCHAR(T0."DocNum") AND T1."LineNum" = T01."BaseLine" AND T1."ItemCode" = T01."ItemCode" AND T00."CANCELED" ='N' ) AS "NF_DEVOLUCAO"
+    
+    FROM OPCH T0
+    INNER JOIN PCH1 T1 ON T0."DocEntry" = T1."DocEntry" 
+    INNER JOIN OITM T2 ON T1."ItemCode" = T2."ItemCode" 
+    INNER JOIN OITB T3 ON T2."ItmsGrpCod" = T3."ItmsGrpCod" 
+    WHERE   T0."BPLId" IN (3, 4, 6, 10) AND T0."U_NotaAjusteInterno" = 'N' AND TO_VARCHAR(T1."BaseRef") in (select TO_VARCHAR(T00."DocNum") FROM RECEBIMENTOS_DOC_NUM  T00)  AND T0."CANCELED" ='N'
+    GROUP BY   T1."ItemCode", T1."BaseRef",  T0."DocNum",      T1."BaseLine",T1."LineNum"
+), RECEBIMENTOS AS (
+    SELECT 
+        T1."ItemCode",
+        T1."BaseRef",
+        T1."BaseLine",
+        T0."DocNum",
+        SUM(T1."Quantity") AS "TotalQuantity" , 
+        (SELECT SUM(T01."Quantity") FROM OPCH T00 INNER JOIN PCH1 T01 ON T01."DocEntry" = T00."DocEntry" WHERE TO_VARCHAR(T01."BaseRef") = TO_VARCHAR(T0."DocNum") AND T1."LineNum" = T01."BaseLine" AND T1."ItemCode" = T01."ItemCode" AND T00."CANCELED" ='N'  AND T00."U_NotaAjusteInterno"='N' AND T01."Usage" in (19,47) ) AS "NF_ENTRADA",
+        (SELECT SUM(T00."NF_DEVOLUCAO") FROM NF_ENTRADA T00 WHERE TO_VARCHAR(T00."BaseRef") = TO_VARCHAR(T0."DocNum") AND T1."LineNum" = T00."BaseLine" AND T1."ItemCode" = T00."ItemCode") AS "NF_DEVOLUCAO"
+    
+    FROM OPDN T0
+    INNER JOIN PDN1 T1 ON T0."DocEntry" = T1."DocEntry" 
+    INNER JOIN OITM T2 ON T1."ItemCode" = T2."ItemCode" 
+    INNER JOIN OITB T3 ON T2."ItmsGrpCod" = T3."ItmsGrpCod" 
+    WHERE   T0."BPLId" IN (3, 4, 6, 10) AND T0."U_NotaAjusteInterno" = 'N' AND TO_VARCHAR(T1."BaseRef") in (select TO_VARCHAR(T00."DocNum") FROM PEDIDOS T00)  AND T0."CANCELED" ='N'
+    GROUP BY   T1."ItemCode", T1."BaseRef",  T0."DocNum",      T1."BaseLine",T1."LineNum"
+)
+SELECT 
+    T0."TaxDate",
+    T0."DocNum" as "Nro do pedido de compra",
+    case when  T0."DocStatus" ='O' THEN 'ABERTO' ELSE 'FECHADO' END AS "Status do pedido de compra",
+    T0."BPLId",
+    T4."BPLName",
+    T0."CardCode", 
+    T0."CardName",
+    T2."ItemCode",  
+    T2."ItemName", 
+    T3."ItmsGrpNam",
+    T2."BuyUnitMsr" as "Unidade de medida de compra",
+    T1."PriceBefDi",
+    SUM(T1."Quantity") AS "Quantidade pedida",
+    (SELECT SUM(T00."TotalQuantity") FROM RECEBIMENTOS T00 WHERE  T00."BaseRef" = T0."DocNum" and T2."ItemCode" = T00."ItemCode" AND T1."LineNum" = T00."BaseLine" )  AS "Quantidade recebida SAP", 
+    SUM(T1."Quantity") -(SELECT SUM(T00."TotalQuantity") FROM RECEBIMENTOS T00 WHERE  T00."BaseRef" = T0."DocNum" and T2."ItemCode" = T00."ItemCode" AND T1."LineNum" = T00."BaseLine" ) "Quantidade não recebida",
+    (SELECT SUM(T00."NF_ENTRADA") FROM RECEBIMENTOS T00 WHERE  T00."BaseRef" = T0."DocNum" and T2."ItemCode" = T00."ItemCode" AND T1."LineNum" = T00."BaseLine" )  AS "Quantidade Nota entrada" ,    
+    (SELECT SUM(T00."NF_DEVOLUCAO") FROM RECEBIMENTOS T00 WHERE  TO_VARCHAR(T00."BaseRef") = TO_VARCHAR(T0."DocNum") and T2."ItemCode" = T00."ItemCode" AND T1."LineNum" = T00."BaseLine" )  AS "Quantidade devolucao nota fiscal de entrada",
+    (SELECT SUM(T00."NF_ENTRADA") FROM RECEBIMENTOS T00 WHERE  T00."BaseRef" = T0."DocNum" and T2."ItemCode" = T00."ItemCode" AND T1."LineNum" = T00."BaseLine" ) - (SELECT SUM(T00."NF_DEVOLUCAO") FROM RECEBIMENTOS T00 WHERE  TO_VARCHAR(T00."BaseRef") = TO_VARCHAR(T0."DocNum") and T2."ItemCode" = T00."ItemCode" AND T1."LineNum" = T00."BaseLine" ) as "Quantidade líquida"
+    
+FROM OPOR T0
+INNER JOIN POR1 T1 ON T0."DocEntry" = T1."DocEntry" 
+INNER JOIN OITM T2 ON T1."ItemCode" = T2."ItemCode" 
+INNER JOIN OITB T3 ON T2."ItmsGrpCod" = T3."ItmsGrpCod" 
+LEFT JOIN OBPL T4 ON T4."BPLId" = T0."BPLId"
+WHERE T0."TaxDate" BETWEEN [%1] AND [%2] AND T0."BPLId" IN (3, 4, 6, 10) AND T0."CANCELED" ='N' AND     T3."ItmsGrpCod" in (119,122,123,131)
+GROUP BY 
+        T0."TaxDate", T0."DocNum", T0."ObjType", T0."CardCode", T0."CardName", T0."DocStatus",
+    T2."ItemCode", T2."ItemName", T3."ItmsGrpNam",T1."LineNum",T2."BuyUnitMsr",T1."PriceBefDi",T4."BPLName",    T0."BPLId"
+
+
+
+-- - Título: Consulta Gerada
+-- - Consulta - Gerada por IA
+SELECT
+    T0."DocNum" AS "Número do Pedido",
+    T0."DocDate" AS "Data do Pedido",
+    T0."CardCode" AS "Código do Fornecedor",
+    T0."CardName" AS "Nome do Fornecedor",
+    T1."ItemCode" AS "Código do Item",
+    T1."Dscription" AS "Descrição do Item",
+    T1."Quantity" AS "Quantidade",
+    T1."Price" AS "Preço Unitário",
+    T1."LineTotal" AS "Total da Linha",
+    T0."DocTotal" AS "Total do Pedido",
+    CASE T0."DocStatus"
+        WHEN 'O' THEN 'Aberto'
+        WHEN 'C' THEN 'Fechado'
+        ELSE 'Desconhecido'
+    END AS "Status do Pedido"
+FROM
+    OPOR T0  -- Tabela de cabeçalho do Pedido de Compra
+INNER JOIN
+    POR1 T1 ON T0."DocEntry" = T1."DocEntry" -- Tabela de linhas do Pedido de Compra
+WHERE
+    T0."DocDate" >= ADD_DAYS(CURRENT_DATE, -30) -- Filtra pedidos dos últimos 30 dias
+    AND T0."CANCELED" = 'N' -- Exclui pedidos cancelados
+ORDER BY
+    T0."DocDate" DESC, T0."DocNum" DESC;
