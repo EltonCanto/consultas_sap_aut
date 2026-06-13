@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  consultas-sap-ai:
+    build: .
+    image: consultas-sap-aut:latest
+    container_name: consultas-sap-aut
+    ports:
+      - "8501:8501"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      - ./consultas.db:/app/consultas.db
+      - ./knowledge_base:/app/knowledge_base
+    restart: unless-stopped
