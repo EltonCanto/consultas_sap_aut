@@ -1,13 +1,13 @@
 cookie:
   expiry_days: 30
   key: random_signature_key
-  name: some_cookie_name
+  name: sap_cookie_nio
 credentials:
   usernames:
     nio_admin:
       email: admin@admin.com
       name: Administrador
-      password: $2b$12$EjlkciIBJ/ZCPKT4YX2VfObtU62ewDFqPDR51INEYhvvzJA08tFNi
+      password: $2b$12$vzm3mS55dkIbSt.nDbjTNe2/JnE04DGxhrjoMWNXPk1DEZzZ3OWCW
 pre-authorized:
   emails:
   - admin@admin.com

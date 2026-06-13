@@ -19,7 +19,7 @@ config = {
     'cookie': {
         'expiry_days': 30,
         'key': 'random_signature_key',
-        'name': 'some_cookie_name'
+        'name': 'sap_cookie_nio'
     },
     'pre-authorized': {
         'emails': ['admin@admin.com']
