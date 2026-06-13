@@ -56,6 +56,9 @@ if prompt := st.chat_input("Descreva a consulta ou view que você precisa..."):
 # Opções para a última resposta gerada
 if 'last_code' in st.session_state and st.session_state['last_code']:
     st.divider()
+    st.subheader("Código Gerado (pronto para copiar)")
+    st.code(st.session_state['last_code'], language="sql")
+
     st.subheader("Ações")
     
     col1, col2 = st.columns(2)
