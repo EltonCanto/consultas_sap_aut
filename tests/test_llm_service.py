@@ -23,7 +23,7 @@ def test_generate_sap_code(mock_get_client):
 
 def test_extract_code_and_metadata():
     response = "Aqui esta:\n```sql\n-- - Titulo: Notas Fiscais\n-- - Consulta - Notas\nSELECT * FROM OINV\n```"
-    titulo, desc, codigo = llm_service.extract_code_and_metadata(response)
+    titulo, desc, codigo, auditoria, resposta_limpa = llm_service.extract_code_and_metadata(response)
     
     assert titulo == "Notas Fiscais"
     assert desc == "Notas"
