@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from database import search_queries
+from ui_utils import add_custom_copy_button
 
 # Verifica autenticação antes de mostrar conteúdo
 if "authentication_status" not in st.session_state or not st.session_state["authentication_status"]:
@@ -35,3 +36,4 @@ if st.button("Buscar"):
                 if res['descricao']:
                     st.write(f"**Descrição:** {res['descricao']}")
                 st.code(res['codigo'], language="sql")
+                add_custom_copy_button(res['codigo'], "Copiar Código")

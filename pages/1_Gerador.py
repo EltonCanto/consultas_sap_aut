@@ -2,6 +2,7 @@ import streamlit as st
 from llm_service import generate_sap_code, extract_code_and_metadata
 from kb_manager import get_model_content, append_to_model
 from database import save_query
+from ui_utils import add_custom_copy_button
 
 # Verifica autenticação antes de mostrar conteúdo
 if "authentication_status" not in st.session_state or not st.session_state["authentication_status"]:
@@ -73,13 +74,16 @@ if 'last_code' in st.session_state and st.session_state['last_code']:
             
     st.subheader("Ações")
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns([1, 1, 2])
     with col1:
         if st.button("💾 Salvar Consulta/View"):
             # Mostra form para confirmar/editar o salvamento
             st.session_state['show_save_form'] = True
-
+            
     with col2:
+        add_custom_copy_button(st.session_state['last_code'], "Copiar Código")
+
+    with col3:
         st.info("Para pedir melhorias ou informar erros, basta digitar no chat acima!")
 
 # Formulário de Salvamento
