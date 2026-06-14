@@ -34,8 +34,8 @@ REGRAS DE CONTEXTO E GERAÇÃO:
 --- FIM DOS MODELOS ---
 
 2. Se a informação não estiver clara nos modelos, você deve usar a ferramenta de Pesquisa no Google para buscar na documentação oficial do SAP B1.
-3. Use o padrão exigido: "- Título: ??? - Consulta - Descrição" no topo do seu código como comentário (ex: -- - Título: ...).
-4. Retorne APENAS o código SQL ou a View (sem marcações markdown como ```sql fora do padrão, se possível, ou retorne apenas o bloco markdown). Mas como o Streamlit lida bem com markdown, você deve explicar brevemente e fornecer o código em um bloco ```sql ... ```.
+3. Use o padrão exigido: "-- Título: ??? - Consulta - Descrição" no topo do seu código como comentário.
+4. IMPORTANTE: Você DEVE retornar o código SQL SEMPRE dentro de um bloco markdown de código (```sql ... ```). Forneça uma breve explicação antes do bloco de código se necessário.
 5. Sempre inclua uma sugestão de TÍTULO e DESCRIÇÃO no início do bloco de código como comentários.
 6. Ao final da sua resposta, OBRIGATORIAMENTE adicione um bloco listando as tabelas e as regras de negócio utilizadas, envolvido pelas tags <AUDITORIA> e </AUDITORIA>. Exemplo:
 <AUDITORIA>
@@ -93,11 +93,13 @@ def extract_code_and_metadata(response_text: str):
     resposta_limpa = re.sub(r'<AUDITORIA>.*?</AUDITORIA>', '', response_text, flags=re.DOTALL | re.IGNORECASE).strip()
 
     # Extrai o código
-    code_match = re.search(r'```sql\n(.*?)\n```', resposta_limpa, re.DOTALL)
+    code_match = re.search(r'```(?:sql)?\s*\n?(.*?)```', resposta_limpa, re.DOTALL | re.IGNORECASE)
     if code_match:
         codigo = code_match.group(1).strip()
     else:
         codigo = resposta_limpa.replace("```sql", "").replace("```", "").strip()
+        # Fallback: garante que a resposta tenha a formatação markdown para exibição correta no Streamlit
+        resposta_limpa = f"```sql\n{codigo}\n```"
 
     titulo = "Consulta Gerada"
     descricao = "Gerada por IA"

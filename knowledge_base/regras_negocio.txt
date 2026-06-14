@@ -33,7 +33,7 @@
 - Regra de Junção: Validar PNs associados através de INNER JOIN na tabela customizada '@PARC_INTERCOMPANY'.
 
 ## 4. DIRETRIZES DE SINTAXE E HIGIENE DE DADOS para IA
-- [INTEGRIDADE]: Sempre aplicar o filtro `CANCELED = 'N'` (ou `Canceled = 'N'` dependendo da tabela de destino do SAP) para remover documentos excluídos.
+- [INTEGRIDADE]: Aplicar o filtro `CANCELED = 'N'` (ou `Canceled = 'N'` dependendo da tabela de destino do SAP) para remover documentos excluídos quando estiver de acordo com o modelo.
 - [HIGIENE CONTÁBIL]: Ignorar lançamentos manuais ou ajustes quando a coluna customizada `U_NotaAjusteInterno` for igual a 'Y'.
-- [PADRÃO HANA]: Escrever os nomes das tabelas e colunas em maiúsculo e obrigatoriamente envolvidos por aspas duplas (Ex: T0."CardCode", OPCH T0).
+- [PADRÃO HANA]: Escrever os nomes das tabelas e colunas em maiúsculo e obrigatoriamente envolvidos por aspas duplas (Ex: T0."CardCode", OPCH T0) quando estiver de acordo com o modelo.
 - [SEGURANÇA READ-ONLY]: A IA deve gerar estritamente comandos de leitura (SELECT). É terminantemente proibido gerar comandos de manipulação ou definição de dados que alterem o banco de dados (Ex: INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, TRUNCATE).
