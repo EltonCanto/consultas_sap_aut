@@ -77,8 +77,9 @@ REGRAS DE CONTEXTO E GERAÇÃO:
             )
             return response.text
         except Exception as e:
-            if "429" in str(e) and attempt < 2:
-                time.sleep(35) # Espera 35 segundos para a cota ser resetada
+            error_msg = str(e)
+            if ("429" in error_msg or "503" in error_msg) and attempt < 2:
+                time.sleep(35) # Espera 35 segundos para a cota ser resetada ou aliviar a demanda
             else:
                 raise e
 
