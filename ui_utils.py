@@ -96,3 +96,29 @@ def add_custom_copy_button(text_to_copy: str, button_text: str = "Copiar Código
     """
     
     components.html(html_code, height=45)
+
+def render_sidebar_docs():
+    import streamlit as st
+    import os
+    
+    st.sidebar.divider()
+    st.sidebar.markdown("### 📄 Documentação")
+    
+    docs_dir = "docs"
+    if os.path.exists(docs_dir):
+        files = [f for f in os.listdir(docs_dir) if f.endswith('.pdf')]
+        if not files:
+            st.sidebar.info("Nenhum documento PDF encontrado na pasta 'docs'.")
+        else:
+            for file in files:
+                file_path = os.path.join(docs_dir, file)
+                with open(file_path, "rb") as f:
+                    pdf_bytes = f.read()
+                st.sidebar.download_button(
+                    label=f"Baixar {file}",
+                    data=pdf_bytes,
+                    file_name=file,
+                    mime="application/pdf"
+                )
+    else:
+        st.sidebar.info("Pasta 'docs' não encontrada. Adicione seus PDFs nesta pasta na raiz do projeto.")

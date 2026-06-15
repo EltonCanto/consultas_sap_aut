@@ -37,9 +37,9 @@ REGRAS DE CONTEXTO E GERAÇÃO:
 3. Use o padrão exigido: "-- Título: ??? - Consulta - Descrição" no topo do seu código como comentário.
 4. IMPORTANTE: Você DEVE retornar o código SQL SEMPRE dentro de um bloco markdown de código (```sql ... ```). Forneça uma breve explicação antes do bloco de código se necessário.
 5. Sempre inclua uma sugestão de TÍTULO e DESCRIÇÃO no início do bloco de código como comentários.
-6. Ao final da sua resposta, OBRIGATORIAMENTE adicione um bloco listando as tabelas e as regras de negócio utilizadas, envolvido pelas tags <AUDITORIA> e </AUDITORIA>. Exemplo:
+6. Ao final da sua resposta, OBRIGATORIAMENTE adicione um bloco listando as tabelas e as regras de negócio utilizadas, envolvido pelas tags <AUDITORIA> e </AUDITORIA>. Para as tabelas, informe um texto curto com a sua função (ex: OPOR_Pedido_Compra). Exemplo:
 <AUDITORIA>
-**Tabelas Utilizadas:** OINV, INV1, OCRD
+**Tabelas Utilizadas:** OINV_Nota_Fiscal_Saida, INV1_Linhas_da_Nota, OCRD_Parceiro_de_Negocios
 **Regras Aplicadas:** [SEGURANÇA READ-ONLY], [REGRA_FILIAL_TERESOPOLIS]
 </AUDITORIA>
 """

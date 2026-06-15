@@ -3,3 +3,127 @@
 -- - Título: Exemplo
 -- - Consulta - Descrição detalhada
 
+-- =====================================================================
+-- REGRAS TÉCNICAS OBRIGATÓRIAS (SINTAXE SAP HANA E CONFIG DE COLUNA):
+-- =====================================================================
+-- 1. IDENTIFICADORES: Sempre utilize aspas duplas para o nome das colunas e aliases (ex: T0."DocEntry" AS "Pk_documento").
+-- 2. CAIXA ALTA: Mantenha as palavras-chave do SQL (SELECT, FROM, INNER JOIN, WHERE, etc.) e os nomes das tabelas nativas do SAP (OPCH, PCH1, OITM) sempre em letras MAIÚSCULAS.
+-- 3. PARÂMETROS: Caso a regra de negócio exija filtros dinâmicos de data ou períodos, utilize parâmetros dinâmicos no padrão HANA usando dois pontos (ex: :diasAnterioresParaPuxar).
+-- 4. FUNÇÕES HIERÁRQUICAS: Utilize funções nativas do HANA como CURRENT_DATE, ADD_DAYS(), TO_VARCHAR(), e estruturas condicionais (CASE WHEN... THEN... ELSE... END) sempre que necessário para tratar nulos ou conversões.
+-- 5. NOMENCLATURA DE ALIASES (Padrão de Negócio):
+--    - Chaves Primárias, Estrangeiras ou Identificadores de Negócio vitais devem receber o prefixo "Pk_" (ex: "Pk_documento", "Pk_item", "Pk_filial").
+--    - Campos de usuário devem manter o prefixo original "U_" (ex: "U_NotaAjusteInterno").
+--    - Textos explicativos longos devem usar snake_case (ex: "Preco_antes_do_desconto_R", "Data_do_recebimento").
+-- 
+-- =====================================================================
+-- REGRA DE MAPEAMENTO DE TIPOS DE DADOS (CONFIGURAÇÃO DE COLUNA):
+-- =====================================================================
+-- Ao gerar a tabela de configuração, mapeie os tipos de dados do SAP HANA para formatos universais de modelagem:
+-- - Campos de Data (DocDate, DocDueDate, UpdateDate, etc.) -> Mapear como DATE (sem tamanho/escala).
+-- - Campos de Valores/Quantidades (DocTotal, Price, Quantity) -> Mapear como DOUBLE (sem tamanho/escala).
+-- - Campos de ID Sequencial interno/Sequência de Linha (BPLId, LineNum, Usage) -> Mapear como INTEGER ou VARCHAR (conforme o tamanho máximo do dicionário SAP, padrão 254 para chaves alfanuméricas).
+-- - Campos de Texto Fixo -> Mapear como VARCHAR com o comprimento exato do metadado (ex: Status/CANCELED -> VARCHAR 1; CardCode/ItemCode -> VARCHAR 20; DocNum -> VARCHAR 254).
+-- OBRIGATORIAMENTE sempre gere e inclua a tabela "Configuração de coluna" no formato Markdown (conforme exemplo abaixo).
+
+-- - Título: Exemplo View Padrão SAP HANA
+-- - Consulta - View exemplo mapeando notas fiscais e sua tabela de configuração de coluna correspondente
+/*
+Configuração de coluna
+| Name | Data type | Length | Scale |
+| --- | --- | --- | --- |
+| Pk_documento | VARCHAR | 254 |  |
+| DocNum | VARCHAR | 254 |  |
+| Nro_da_nota_fiscal | VARCHAR | 254 |  |
+| DocDate | DATE | |  |
+| Pk_codigo_do_PN | VARCHAR | 20 |  |
+| Desconto_do_documento | DOUBLE |  |  |
+| prcnt_Desconto_no_docum... | DOUBLE |  |  |
+| DocTotal | DOUBLE |  |  |
+| Pk_filial | INTEGER |  |  |
+| Pk_item | VARCHAR | 20 |  |
+| Quantity | DOUBLE |  |  |
+| Preco_antes_do_desconto_R | DOUBLE |  |  |
+| Preco_apos_desconto | DOUBLE |  |  |
+| LineTotal | DOUBLE |  |  |
+| Pk_utilizacao | INTEGER |  |  |
+| U_NotaAjusteInterno | VARCHAR | 1 |  |
+| CANCELED | VARCHAR | 1 |  |
+| UpdateDate | DATE |  |  |
+| Data_do_recebimento | DATE |  |  |
+| LineNum | VARCHAR | 254 |  |
+*/
+SELECT
+    T0."DocEntry" as "Pk_documento",
+    T0."DocNum",
+    T0."Serial" as "Nro_da_nota_fiscal",
+    T0."DocDate",
+    T0."CardCode" as "Pk_codigo_do_PN",
+    T0."DiscSum" as "Desconto_do_documento",
+    T0."DiscPrcnt" as "prcnt_Desconto_no_documento",
+    T0."DocTotal", 
+    T0."BPLId" as "Pk_filial", 
+    T1."ItemCode" as "Pk_item", 
+    T1."Quantity",
+    T1."PriceBefDi" as "Preco_antes_do_desconto_R", 
+    T1."Price" AS "Preco_apos_desconto",
+    T1."LineTotal", 
+    T1."Usage" as "Pk_utilizacao",
+    T0."U_NotaAjusteInterno",
+    T0."CANCELED",
+    T0."UpdateDate",
+    CASE WHEN T4."TaxDate" IS NULL THEN T0."DocDate" ELSE T4."TaxDate" END AS "Data_do_recebimento",
+    T1."LineNum"
+FROM OPCH T0 
+INNER JOIN PCH1 T1 ON T0."DocEntry" = T1."DocEntry" 
+LEFT JOIN OITM T2 ON T1."ItemCode" = T2."ItemCode"
+LEFT JOIN OITB T3 ON T2."ItmsGrpCod" = T3."ItmsGrpCod"
+LEFT JOIN OPDN T4 ON TO_VARCHAR(T4."DocNum") = TO_VARCHAR(T1."BaseRef") AND T4."CANCELED" ='N'
+WHERE T0."CANCELED" in ('N','Y') 
+  AND T0."UpdateDate">=ADD_DAYS(CURRENT_DATE,:diasAnterioresParaPuxar)  
+  AND T1."Usage" IN (47,19)  
+  AND T3."ItmsGrpCod" IN (119,120,121,122,123,124,125,131,137);
+
+
+-- - Título: Vendas Consolidadas por Centro de Apuração (Mês/Ano Dinâmico)
+-- - Consulta - Esta view retorna as vendas consolidadas (soma de quantidade e valor total)
+-- Título: Vendas Consolidadas por Centro de Apuração (Mês/Ano Dinâmico)
+-- Consulta - Esta view retorna as vendas consolidadas (soma de quantidade e valor total)
+-- para um mês e ano específicos, definidos por parâmetros, agrupadas por Centro de Apuração.
+-- Documentos cancelados são excluídos.
+--
+-- Parâmetros:
+-- :Ano - Ano desejado (ex: '2026')
+-- :Mes - Mês desejado (ex: '01' para Janeiro, '02' para Fevereiro)
+
+/*
+Configuração de coluna
+| Name | Data type | Length | Scale |
+| --- | --- | --- | --- |
+| Centro_Apuracao | VARCHAR | 20 |  |
+| Total_Quantidade_Vendida | DOUBLE |  |  |
+| Total_Valor_Vendido | DOUBLE |  |  |
+*/
+SELECT
+    CASE
+        WHEN T0."BPLId" IN (3, 4, 6, 7, 10) THEN 'TERESÓPOLIS'
+        WHEN T0."BPLId" IN (1, 9) THEN 'NORDESTE / RECIFE'
+        WHEN T0."BPLId" IN (5, 8) THEN 'RDU / PARANÁ / FARMS'
+        ELSE 'OUTROS' -- Inclui filiais não mapeadas nas regras específicas
+    END AS "Centro_Apuracao",
+    SUM(T1."Quantity") AS "Total_Quantidade_Vendida",
+    SUM(T1."LineTotal") AS "Total_Valor_Vendido"
+FROM
+    OINV T0
+INNER JOIN
+    INV1 T1 ON T0."DocEntry" = T1."DocEntry"
+WHERE
+    T0."CANCELED" = 'N'
+    AND T0."DocDate" BETWEEN TO_DATE(:Ano || :Mes || '01', 'YYYYMMDD')
+                       AND LAST_DAY(TO_DATE(:Ano || :Mes || '01', 'YYYYMMDD'))
+GROUP BY
+    CASE
+        WHEN T0."BPLId" IN (3, 4, 6, 7, 10) THEN 'TERESÓPOLIS'
+        WHEN T0."BPLId" IN (1, 9) THEN 'NORDESTE / RECIFE'
+        WHEN T0."BPLId" IN (5, 8) THEN 'RDU / PARANÁ / FARMS'
+        ELSE 'OUTROS'
+    END;

@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from database import search_queries
-from ui_utils import add_custom_copy_button
+from ui_utils import add_custom_copy_button, render_sidebar_docs
 
 # Verifica autenticação antes de mostrar conteúdo
 if "authentication_status" not in st.session_state or not st.session_state["authentication_status"]:
@@ -9,6 +9,9 @@ if "authentication_status" not in st.session_state or not st.session_state["auth
     st.stop()
 
 st.title("📚 Histórico de Consultas e Views Salvas")
+
+# Exibe documentação na sidebar
+render_sidebar_docs()
 
 # Filtros de Busca
 st.subheader("Filtros")

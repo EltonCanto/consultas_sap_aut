@@ -2,7 +2,7 @@ import streamlit as st
 from llm_service import generate_sap_code, extract_code_and_metadata
 from kb_manager import get_model_content, append_to_model
 from database import save_query
-from ui_utils import add_custom_copy_button
+from ui_utils import add_custom_copy_button, render_sidebar_docs
 
 # Verifica autenticação antes de mostrar conteúdo
 if "authentication_status" not in st.session_state or not st.session_state["authentication_status"]:
@@ -10,6 +10,9 @@ if "authentication_status" not in st.session_state or not st.session_state["auth
     st.stop()
 
 st.title("✨ Gerador de Consultas e Views")
+
+# Exibe documentação na sidebar
+render_sidebar_docs()
 
 def clear_state():
     if "messages" in st.session_state:

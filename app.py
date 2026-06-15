@@ -4,6 +4,7 @@ import yaml
 from yaml.loader import SafeLoader
 from database import init_db
 from kb_manager import init_kb
+from ui_utils import render_sidebar_docs
 import os
 
 # Configuração da página principal
@@ -45,6 +46,8 @@ if st.session_state["authentication_status"]:
         st.page_link("app.py", label="Início", icon="🏠")
         st.page_link("pages/1_Gerador.py", label="Gerador IA", icon="✨")
         st.page_link("pages/2_Historico.py", label="Histórico", icon="📚")
+        
+        render_sidebar_docs()
         
     # Conteúdo Principal (Home)
     st.title("🤖 Consulta SAP B1 com Inteligência Artificial")
