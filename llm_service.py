@@ -28,16 +28,20 @@ REGRAS GLOBAIS DE NEGÓCIO:
 {regras_negocio}
 
 REGRAS DE CONTEXTO E GERAÇÃO:
-1. Analise o seguinte contexto (modelos fornecidos pelo usuário) e tente basear sua resposta nas estruturas, nomes de tabelas (ex: OINV, INV1, OCRD, etc) e padrões presentes lá:
+1. PRIORIDADE MÁXIMA: As "REGRAS GLOBAIS DE NEGÓCIO" têm precedência absoluta. Caso haja alguma divergência entre as regras e os modelos fornecidos (como IDs de filiais), siga SEMPRE as regras globais de negócio.
+2. Analise o seguinte contexto (modelos fornecidos pelo usuário) e tente basear sua resposta nas estruturas, nomes de tabelas (ex: OINV, INV1, OCRD, etc) e padrões presentes lá:
 --- INÍCIO DOS MODELOS ---
 {contexto_modelos}
 --- FIM DOS MODELOS ---
 
-2. Se a informação não estiver clara nos modelos, você deve usar a ferramenta de Pesquisa no Google para buscar na documentação oficial do SAP B1.
-3. Use o padrão exigido: "-- Título: ??? - Consulta - Descrição" no topo do seu código como comentário.
-4. IMPORTANTE: Você DEVE retornar o código SQL SEMPRE dentro de um bloco markdown de código (```sql ... ```). Forneça uma breve explicação antes do bloco de código se necessário.
-5. Sempre inclua uma sugestão de TÍTULO e DESCRIÇÃO no início do bloco de código como comentários.
-6. Ao final da sua resposta, OBRIGATORIAMENTE adicione um bloco listando as tabelas e as regras de negócio utilizadas, envolvido pelas tags <AUDITORIA> e </AUDITORIA>. Para as tabelas, informe um texto curto com a sua função (ex: OPOR_Pedido_Compra). Exemplo:
+3. Se a informação não estiver clara nos modelos, você deve usar a ferramenta de Pesquisa no Google para buscar na documentação oficial do SAP B1.
+4. Use o padrão exigido: "-- Título: ??? - Consulta - Descrição" no topo do seu código como comentário.
+5. REGRAS DE ESTRUTURA DO CÓDIGO (CRÍTICO):
+   - Se for gerar uma Consulta SQL, forneça apenas o comando SELECT.
+   - Se for gerar uma View, É EXPRESSAMENTE PROIBIDO utilizar o comando `CREATE VIEW ... AS`. A sua resposta DEVE seguir fielmente o padrão dos exemplos: contendo OBRIGATORIAMENTE a tabela Markdown de "Configuração de coluna" dentro de um bloco de comentários `/* ... */`, seguida imediatamente pela instrução SELECT (sem nenhum CREATE VIEW).
+6. IMPORTANTE: Você DEVE retornar o código final SEMPRE dentro de um bloco markdown de código (```sql ... ```). Forneça uma breve explicação antes do bloco de código se necessário.
+7. Sempre inclua uma sugestão de TÍTULO e DESCRIÇÃO no início do bloco de código como comentários.
+8. Ao final da sua resposta, OBRIGATORIAMENTE adicione um bloco listando as tabelas e as regras de negócio utilizadas, envolvido pelas tags <AUDITORIA> e </AUDITORIA>. Para as tabelas, informe um texto curto com a sua função (ex: OPOR_Pedido_Compra). Exemplo:
 <AUDITORIA>
 **Tabelas Utilizadas:** OINV_Nota_Fiscal_Saida, INV1_Linhas_da_Nota, OCRD_Parceiro_de_Negocios
 **Regras Aplicadas:** [SEGURANÇA READ-ONLY], [REGRA_FILIAL_TERESOPOLIS]

@@ -4,10 +4,12 @@
 [REGRA_FILIAL_TERESOPOLIS]:
 - SE (BPLId EM (3, 4, 6, 7, 10)) OU (WhsCode COMEÇA COM ('03', '04', '06', '07', '10')) 
   ENTÃO Centro_Apuracao = 'TERESÓPOLIS'
+- ATENÇÃO: As filiais (3, 4, 6, 10) e (3, 4, 6, 7, 10) pertencem EXCLUSIVAMENTE a Teresópolis. NUNCA as utilize para outras unidades.
 
 [REGRA_FILIAL_NORDESTE]:
 - SE (BPLId EM (1, 9)) OU (WhsCode COMEÇA COM ('01', '02', '09')) 
   ENTÃO Centro_Apuracao = 'NORDESTE / RECIFE'
+- ATENÇÃO MÁXIMA: Use EXATAMENTE E APENAS (1, 9) para filtrar a unidade Nordeste. É PROIBIDO usar (3, 4, 6, 10) para o Nordeste.
 
 [REGRA_FILIAL_RDU]:
 - SE (BPLId EM (5, 8)) OU (WhsCode COMEÇA COM ('05', '08')) 
