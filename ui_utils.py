@@ -104,7 +104,8 @@ def render_sidebar_docs():
     st.sidebar.divider()
     st.sidebar.markdown("### 📄 Documentação")
     
-    docs_dir = "docs"
+    docs_dir = "Docs" if os.path.exists("Docs") else "docs"
+    
     if os.path.exists(docs_dir):
         files = [f for f in os.listdir(docs_dir) if f.endswith('.pdf')]
         if not files:
