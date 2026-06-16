@@ -42,8 +42,8 @@ if prompt := st.chat_input("Descreva a consulta ou view que você precisa..."):
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Obter contexto
-    contexto = get_model_content(tipo)
+    # Obter contexto com Mini-RAG (filtragem por similaridade do prompt)
+    contexto = get_model_content(tipo, prompt)
 
     # Processamento
     with st.chat_message("model"):
@@ -95,7 +95,7 @@ if st.session_state.get('show_save_form', False):
         st.write("Confirmar dados para salvar:")
         nome_save = st.text_input("Título", value=st.session_state['last_title'])
         desc_save = st.text_input("Descrição", value=st.session_state['last_desc'])
-        add_to_kb = st.checkbox("Adicionar aos modelos da IA (Base de Conhecimento)", value=True)
+        add_to_kb = st.checkbox("Salvar como Modelo (Base de Conhecimento da IA)", value=False, help="Marque esta opção apenas para consultas/views relevantes que a IA deva usar como exemplo no futuro.")
         
         submitted = st.form_submit_button("Confirmar")
         if submitted:

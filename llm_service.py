@@ -41,18 +41,23 @@ REGRAS DE CONTEXTO E GERAÇÃO:
    - Se for gerar uma View, É EXPRESSAMENTE PROIBIDO utilizar o comando `CREATE VIEW ... AS`. A sua resposta DEVE seguir fielmente o padrão dos exemplos: contendo OBRIGATORIAMENTE a tabela Markdown de "Configuração de coluna" dentro de um bloco de comentários `/* ... */`, seguida imediatamente pela instrução SELECT (sem nenhum CREATE VIEW).
 6. IMPORTANTE: Você DEVE retornar o código final SEMPRE dentro de um bloco markdown de código (```sql ... ```). Forneça uma breve explicação antes do bloco de código se necessário.
 7. Sempre inclua uma sugestão de TÍTULO e DESCRIÇÃO no início do bloco de código como comentários.
-8. Ao final da sua resposta, OBRIGATORIAMENTE adicione um bloco listando as tabelas e as regras de negócio utilizadas, envolvido pelas tags <AUDITORIA> e </AUDITORIA>. Para as tabelas, informe um texto curto com a sua função (ex: OPOR_Pedido_Compra). Exemplo:
+8. Ao final da sua resposta, OBRIGATORIAMENTE adicione um bloco listando as tabelas e as regras de negócio utilizadas, envolvido pelas tags <AUDITORIA> e </AUDITORIA>. Para as tabelas, informe um texto curto com a sua função. Use OBRIGATORIAMENTE o formato de lista (bullet points) exato do exemplo abaixo:
 <AUDITORIA>
-**Tabelas Utilizadas:** OINV_Nota_Fiscal_Saida, INV1_Linhas_da_Nota, OCRD_Parceiro_de_Negocios
-**Regras Aplicadas:** [SEGURANÇA READ-ONLY], [REGRA_FILIAL_TERESOPOLIS]
+Tabelas Utilizadas:
+- OINV_Nota_Fiscal_Saida (Cabeçalho da Nota Fiscal de Saída)
+- INV1_Linhas_da_Nota (Linhas da Nota Fiscal)
+
+Regras Aplicadas:
+- [SEGURANÇA READ-ONLY]
+- [REGRA_FILIAL_TERESOPOLIS]
 </AUDITORIA>
 """
 
     contents = []
     
-    # Adicionar histórico se existir
+    # Adicionar histórico se existir (Limitado às últimas 4 mensagens para economizar tokens)
     if chat_history:
-        for msg in chat_history:
+        for msg in chat_history[-4:]:
             role = 'user' if msg['role'] == 'user' else 'model'
             # Evitar enviar tags de auditoria no histórico se houver
             clean_content = re.sub(r'<AUDITORIA>.*?</AUDITORIA>', '', msg['content'], flags=re.DOTALL | re.IGNORECASE)

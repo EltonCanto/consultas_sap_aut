@@ -6,7 +6,10 @@
 -- =====================================================================
 -- REGRAS TÉCNICAS OBRIGATÓRIAS (SINTAXE SAP HANA E CONFIG DE COLUNA):
 -- =====================================================================
--- 1. IDENTIFICADORES: Sempre utilize aspas duplas para o nome das colunas e aliases (ex: T0."DocEntry" AS "Pk_documento").
+-- 1. IDENTIFICADORES: 
+--    - Sempre utilize aspas duplas para o nome das colunas e aliases (ex: T0."DocEntry" AS "Pk_documento").
+--    - É OBRIGATÓRIO usar o padrão snake_case para identificadores.
+--    - É OBRIGATÓRIO na cláusula WHERE utilizar ":" antes da variável, conforme exemplo: T0."UpdateDate">=ADD_DAYS(CURRENT_DATE,:variavel_da_consulta).
 -- 2. CAIXA ALTA: Mantenha as palavras-chave do SQL (SELECT, FROM, INNER JOIN, WHERE, etc.) e os nomes das tabelas nativas do SAP (OPCH, PCH1, OITM) sempre em letras MAIÚSCULAS.
 -- 3. PARÂMETROS: Caso a regra de negócio exija filtros dinâmicos de data ou períodos, utilize parâmetros dinâmicos no padrão HANA usando dois pontos (ex: :diasAnterioresParaPuxar).
 -- 4. FUNÇÕES HIERÁRQUICAS: Utilize funções nativas do HANA como CURRENT_DATE, ADD_DAYS(), TO_VARCHAR(), e estruturas condicionais (CASE WHEN... THEN... ELSE... END) sempre que necessário para tratar nulos ou conversões.
@@ -127,3 +130,91 @@ GROUP BY
         WHEN T0."BPLId" IN (5, 8) THEN 'RDU / PARANÁ / FARMS'
         ELSE 'OUTROS'
     END;
+
+
+-- - Título: Compras de Matéria-Prima por Vencimento - Teresópolis
+-- - Consulta - Esta view retorna os detalhes de compras de matéria-prima por data de vencimento para a unidade de Teresópolis,
+-- Título: Compras de Matéria-Prima por Vencimento - Teresópolis
+-- Consulta - Esta view retorna os detalhes de compras de matéria-prima por data de vencimento para a unidade de Teresópolis,
+-- incluindo filtros de utilização e grupo de itens, sem exclusão de transações intercompany.
+--
+-- Parâmetros:
+-- :data_vencimento_inicial - Data de vencimento inicial (ex: '2023-01-01')
+-- :data_vencimento_final - Data de vencimento final (ex: '2023-12-31')
+
+/*
+Configuração de coluna
+| Name | Data type | Length | Scale |
+| --- | --- | --- | --- |
+| pk_numero_documento | VARCHAR | 20 | |
+| data_documento | DATE | | |
+| data_vencimento | DATE | | |
+| pk_codigo_fornecedor | VARCHAR | 15 | |
+| nome_fornecedor | VARCHAR | 100 | |
+| pk_codigo_item | VARCHAR | 20 | |
+| descricao_item | VARCHAR | 100 | |
+| pk_codigo_grupo_item | INTEGER | | |
+| nome_grupo_item | VARCHAR | 100 | |
+| unidades_por_compra | DOUBLE | | |
+| quantidade_total | DOUBLE | | |
+| valor_total | DOUBLE | | |
+| preco_medio | DOUBLE | | |
+| quantidade_unidade_basica | DOUBLE | | |
+| preco_medio_unidade_basica | DOUBLE | | |
+| flag_validacao_comissao | VARCHAR | 1 | |
+| centro_apuracao | VARCHAR | 20 | |
+| periodo | VARCHAR | 10 | |
+| status_documento | VARCHAR | 1 | |
+*/
+SELECT
+    T0."DocNum" AS "pk_numero_documento",
+    T0."DocDate" AS "data_documento",
+    T0."DocDueDate" AS "data_vencimento",
+    T0."CardCode" AS "pk_codigo_fornecedor",
+    T0."CardName" AS "nome_fornecedor",
+    T1."ItemCode" AS "pk_codigo_item",
+    T1."Dscription" AS "descricao_item",
+    T4."ItmsGrpCod" AS "pk_codigo_grupo_item",
+    T4."ItmsGrpNam" AS "nome_grupo_item",
+    T3."NumInBuy" AS "unidades_por_compra",
+    SUM(T1."Quantity") AS "quantidade_total",
+    SUM(T1."LineTotal") AS "valor_total",
+    (SUM(T1."LineTotal")/NULLIF(SUM(T1."Quantity"), 0)) AS "preco_medio",
+    (SUM(T1."Quantity") * T3."NumInBuy") AS "quantidade_unidade_basica",
+    (SUM(T1."LineTotal") / NULLIF((SUM(T1."Quantity") * T3."NumInBuy"), 0)) AS "preco_medio_unidade_basica",
+    T3."ValidComm" AS "flag_validacao_comissao",
+    'TERESÓPOLIS' AS "centro_apuracao",
+    (TO_NVARCHAR(MONTH(T0."DocDate")) || ' - ' || TO_NVARCHAR(YEAR(T0."DocDate"))) AS "periodo",
+    T0."DocStatus" AS "status_documento"
+FROM
+    OPCH T0
+INNER JOIN
+    PCH1 T1 ON T0."DocEntry" = T1."DocEntry"
+LEFT JOIN
+    OCRD T2 ON T0."CardCode" = T2."CardCode"
+LEFT JOIN
+    OITM T3 ON T1."ItemCode" = T3."ItemCode"
+LEFT JOIN
+    OITB T4 ON T3."ItmsGrpCod" = T4."ItmsGrpCod"
+WHERE
+    T0."DocDueDate" >= :data_vencimento_inicial
+    AND T0."DocDueDate" <= :data_vencimento_final
+    AND T0."CANCELED" = 'N'
+    AND T0."BPLId" IN (3, 4, 6, 7, 10)
+    AND T1."Usage" IN (19, 47)
+    AND T1."Usage" <> 50
+    AND T3."ItmsGrpCod" IN (119, 120, 121, 122, 123, 124, 125, 131, 137)
+GROUP BY
+    T0."DocNum",
+    T0."DocDate",
+    T0."DocDueDate",
+    T0."CardCode",
+    T0."CardName",
+    T1."ItemCode",
+    T1."Dscription",
+    T4."ItmsGrpCod",
+    T4."ItmsGrpNam",
+    T3."NumInBuy",
+    T3."ValidComm",
+    (TO_NVARCHAR(MONTH(T0."DocDate")) || ' - ' || TO_NVARCHAR(YEAR(T0."DocDate"))),
+    T0."DocStatus";
