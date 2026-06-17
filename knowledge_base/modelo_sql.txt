@@ -117,3 +117,51 @@ WITH DEV_PAGA AS (SELECT DISTINCT      MONTH(T0."DocDate")||'/' ||YEAR(T0."DocDa
 -- - Título: Faturamento detalhado com utilização - (0141)
 -- - Consulta - Esta consulta exibe os detalhes de: faturamento detalhado com utilização - (0141).
 with cte as (SELECT DISTINCT      MONTH(T0."DocDate") || '/' || YEAR(T0."DocDate") AS "Periodo",     T0."DocNum",      T0."BPLName",      T0."CardCode",      T0."CardName",      TO_VARCHAR(T3."AliasName") AS "Nome fantasia",      T0."DocTotal",      T0."DocDueDate",      T0."DocDate",      T0."Serial",      T0."U_SDCanhotoRecebido",      CASE          WHEN T2."Name" IS NULL THEN 'SEM DE PARA CR'          ELSE T2."Name"      END AS "DE PARA CR",     T1."Usage" AS "Usage_INV1",     T4."Usage" AS "Usage_Description", -- Obtendo a descrição do uso corretamente     (SELECT SUM(T5."LineTotal") FROM INV1 T5 WHERE T5."DocEntry" = T0."DocEntry") AS "Total_Linhas" -- Soma do total das linhas da nota FROM OINV T0   INNER JOIN INV1 T1 ON T0."DocEntry" = T1."DocEntry"  LEFT JOIN "@DE_PARA_CR" T2 ON T2."Code" = T0."CardCode" LEFT JOIN OCRD T3 ON T3."CardCode" = T0."CardCode" LEFT JOIN OUSG T4 ON T1."Usage" = T4."ID"  -- Relacionando corretamente com o ID da OUSG WHERE T0."CANCELED" IN ('N')  AND (T0."CardCode" NOT IN ( 'CL001471', 'CL001482', 'CL001520', 'CL002158', 'CL003964','CL005706', 'CL004716', 'CL001264', 'CL004824') OR ( T0."CardCode"  IN ( 'CL001471', 'CL001482', 'CL001520', 'CL002158', 'CL003964','CL005706', 'CL004716', 'CL001264', 'CL004824')  AND T1."Usage" = 62) ) AND T0."DocDate" >= [%1]  AND T0."DocDate" <= [%2])  SELECT      T0."Periodo",     T0."DocNum",      T0."BPLName",      T0."CardCode",      T0."CardName",      T0."Nome fantasia",      CASE WHEN T0."DocTotal" is null  THEN T0."Total_Linhas" ELSE T0."DocTotal" END AS "Total do documento",      T0."DocDueDate",      T0."DocDate",      T0."Serial",      T0."U_SDCanhotoRecebido",      T0. "DE PARA CR",     T0."Usage_INV1",     T0."Usage_Description", -- Obtendo a descrição do uso corretamente     T0."Total_Linhas" FROM cte T0;
+
+
+-- - Título: Pedido de Compra de Matéria Prima - RDU por Data de Lançamento
+-- - Consulta - Esta consulta exibe os detalhes de pedidos de compra de matéria prima para a unidade RDU, filtrados por data de lançamento.
+-- Título: Pedido de Compra de Matéria Prima - RDU por Data de Lançamento
+-- Consulta - Esta consulta exibe os detalhes de pedidos de compra de matéria prima para a unidade RDU, filtrados por data de lançamento.
+SELECT
+    T0."DocEntry",
+    T0."DocNum",
+    T0."DocDate",
+    T0."CardCode",
+    T0."CardName",
+    T1."ItemCode",
+    T1."Dscription",
+    T1."Quantity",
+    T1."Price",
+    T1."LineTotal",
+    T1."Usage" AS "CodigoUsoLinha",
+    T4."Usage" AS "DescricaoUso",
+    T2."ItmsGrpCod",
+    T3."ItmsGrpNam",
+    T0."DocTotal",
+    T0."BPLId",
+    T0."BPLName",
+    T1."WhsCode" AS "CodigoDepositoLinha",
+    CASE
+        WHEN (T0."BPLId" IN (5, 8)) OR (T1."WhsCode" LIKE '05%' OR T1."WhsCode" LIKE '08%') THEN 'RDU / PARANÁ / FARMS'
+        ELSE 'Outro Centro de Apuração'
+    END AS "Centro_Apuracao"
+FROM
+    OPOR T0
+INNER JOIN
+    POR1 T1 ON T0."DocEntry" = T1."DocEntry"
+INNER JOIN
+    OITM T2 ON T1."ItemCode" = T2."ItemCode"
+INNER JOIN
+    OITB T3 ON T2."ItmsGrpCod" = T3."ItmsGrpCod"
+LEFT JOIN
+    OUSG T4 ON T1."Usage" = T4."ID"
+WHERE
+    T0."DocDate" BETWEEN [%0] AND [%1]
+    AND T0."CANCELED" = 'N'
+    AND T1."Usage" IN (19, 47)
+    AND T1."Usage" <> 50 -- Ignorar Devolução Paga
+    AND T2."ItmsGrpCod" IN (119, 120, 121, 122, 123, 124, 125, 131, 137)
+    AND ((T0."BPLId" IN (5, 8)) OR (T1."WhsCode" LIKE '05%' OR T1."WhsCode" LIKE '08%'))
+ORDER BY
+    T0."DocDate", T0."DocNum";

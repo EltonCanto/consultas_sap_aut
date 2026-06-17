@@ -11,7 +11,7 @@
 --    - É OBRIGATÓRIO usar o padrão snake_case para identificadores.
 --    - É OBRIGATÓRIO na cláusula WHERE utilizar ":" antes da variável, conforme exemplo: T0."UpdateDate">=ADD_DAYS(CURRENT_DATE,:variavel_da_consulta).
 -- 2. CAIXA ALTA: Mantenha as palavras-chave do SQL (SELECT, FROM, INNER JOIN, WHERE, etc.) e os nomes das tabelas nativas do SAP (OPCH, PCH1, OITM) sempre em letras MAIÚSCULAS.
--- 3. PARÂMETROS: Caso a regra de negócio exija filtros dinâmicos de data ou períodos, utilize parâmetros dinâmicos no padrão HANA usando dois pontos (ex: :diasAnterioresParaPuxar).
+-- 3. PARÂMETROS E CONVERSÃO: Caso a consulta original possua variáveis no padrão de interface SAP B1 (ex: [%0], [%1]), você DEVE convertê-las OBRIGATORIAMENTE para parâmetros dinâmicos no padrão HANA usando dois pontos (ex: :p_data_inicial, :p_data_final, :p_codigo_cliente). NUNCA rejeite a requisição afirmando que o formato [%0] é inválido para a view, apenas faça a conversão silenciosamente.
 -- 4. FUNÇÕES HIERÁRQUICAS: Utilize funções nativas do HANA como CURRENT_DATE, ADD_DAYS(), TO_VARCHAR(), e estruturas condicionais (CASE WHEN... THEN... ELSE... END) sempre que necessário para tratar nulos ou conversões.
 -- 5. NOMENCLATURA DE ALIASES (Padrão de Negócio):
 --    - Chaves Primárias, Estrangeiras ou Identificadores de Negócio vitais devem receber o prefixo "Pk_" (ex: "Pk_documento", "Pk_item", "Pk_filial").
@@ -25,35 +25,35 @@
 -- - Campos de Data (DocDate, DocDueDate, UpdateDate, etc.) -> Mapear como DATE (sem tamanho/escala).
 -- - Campos de Valores/Quantidades (DocTotal, Price, Quantity) -> Mapear como DOUBLE (sem tamanho/escala).
 -- - Campos de ID Sequencial interno/Sequência de Linha (BPLId, LineNum, Usage) -> Mapear como INTEGER ou VARCHAR (conforme o tamanho máximo do dicionário SAP, padrão 254 para chaves alfanuméricas).
--- - Campos de Texto Fixo -> Mapear como VARCHAR com o comprimento exato do metadado (ex: Status/CANCELED -> VARCHAR 1; CardCode/ItemCode -> VARCHAR 20; DocNum -> VARCHAR 254).
--- OBRIGATORIAMENTE sempre gere e inclua a tabela "Configuração de coluna" no formato Markdown (conforme exemplo abaixo).
+-- - Campos de Texto Fixo -> Mapear como VARCHAR com o comprimento exato do metadado no formato VARCHAR(N) (ex: Status/CANCELED -> VARCHAR(1); CardCode/ItemCode -> VARCHAR(20); DocNum -> VARCHAR(254)).
+-- OBRIGATORIAMENTE sempre gere e inclua a tabela "Configuração de coluna:" no formato Markdown contendo Coluna, Tipo de Dados e Descrição (conforme exemplo abaixo).
 
 -- - Título: Exemplo View Padrão SAP HANA
 -- - Consulta - View exemplo mapeando notas fiscais e sua tabela de configuração de coluna correspondente
 /*
-Configuração de coluna
-| Name | Data type | Length | Scale |
-| --- | --- | --- | --- |
-| Pk_documento | VARCHAR | 254 |  |
-| DocNum | VARCHAR | 254 |  |
-| Nro_da_nota_fiscal | VARCHAR | 254 |  |
-| DocDate | DATE | |  |
-| Pk_codigo_do_PN | VARCHAR | 20 |  |
-| Desconto_do_documento | DOUBLE |  |  |
-| prcnt_Desconto_no_docum... | DOUBLE |  |  |
-| DocTotal | DOUBLE |  |  |
-| Pk_filial | INTEGER |  |  |
-| Pk_item | VARCHAR | 20 |  |
-| Quantity | DOUBLE |  |  |
-| Preco_antes_do_desconto_R | DOUBLE |  |  |
-| Preco_apos_desconto | DOUBLE |  |  |
-| LineTotal | DOUBLE |  |  |
-| Pk_utilizacao | INTEGER |  |  |
-| U_NotaAjusteInterno | VARCHAR | 1 |  |
-| CANCELED | VARCHAR | 1 |  |
-| UpdateDate | DATE |  |  |
-| Data_do_recebimento | DATE |  |  |
-| LineNum | VARCHAR | 254 |  |
+Configuração de coluna:
+| Coluna | Tipo de Dados | Descrição |
+|---|---|---|
+| Pk_documento | VARCHAR(254) | Identificador do documento. |
+| DocNum | VARCHAR(254) | Número do documento. |
+| Nro_da_nota_fiscal | VARCHAR(254) | Número da nota fiscal. |
+| DocDate | DATE | Data do documento. |
+| Pk_codigo_do_PN | VARCHAR(20) | Código do parceiro de negócios. |
+| Desconto_do_documento | DOUBLE | Valor de desconto do documento. |
+| prcnt_Desconto_no_docum... | DOUBLE | Percentual de desconto. |
+| DocTotal | DOUBLE | Total do documento. |
+| Pk_filial | INTEGER | Identificador da filial. |
+| Pk_item | VARCHAR(20) | Código do item. |
+| Quantity | DOUBLE | Quantidade do item. |
+| Preco_antes_do_desconto_R | DOUBLE | Preço antes do desconto. |
+| Preco_apos_desconto | DOUBLE | Preço após desconto. |
+| LineTotal | DOUBLE | Total da linha. |
+| Pk_utilizacao | INTEGER | Código de utilização. |
+| U_NotaAjusteInterno | VARCHAR(1) | Flag de nota de ajuste interno. |
+| CANCELED | VARCHAR(1) | Flag de cancelamento. |
+| UpdateDate | DATE | Data de atualização. |
+| Data_do_recebimento | DATE | Data do recebimento. |
+| LineNum | VARCHAR(254) | Número da linha. |
 */
 SELECT
     T0."DocEntry" as "Pk_documento",
@@ -99,12 +99,12 @@ WHERE T0."CANCELED" in ('N','Y')
 -- :Mes - Mês desejado (ex: '01' para Janeiro, '02' para Fevereiro)
 
 /*
-Configuração de coluna
-| Name | Data type | Length | Scale |
-| --- | --- | --- | --- |
-| Centro_Apuracao | VARCHAR | 20 |  |
-| Total_Quantidade_Vendida | DOUBLE |  |  |
-| Total_Valor_Vendido | DOUBLE |  |  |
+Configuração de coluna:
+| Coluna | Tipo de Dados | Descrição |
+|---|---|---|
+| Centro_Apuracao | VARCHAR(20) | Nome do centro de apuração. |
+| Total_Quantidade_Vendida | DOUBLE | Quantidade total vendida. |
+| Total_Valor_Vendido | DOUBLE | Valor total vendido. |
 */
 SELECT
     CASE
@@ -143,28 +143,28 @@ GROUP BY
 -- :data_vencimento_final - Data de vencimento final (ex: '2023-12-31')
 
 /*
-Configuração de coluna
-| Name | Data type | Length | Scale |
-| --- | --- | --- | --- |
-| pk_numero_documento | VARCHAR | 20 | |
-| data_documento | DATE | | |
-| data_vencimento | DATE | | |
-| pk_codigo_fornecedor | VARCHAR | 15 | |
-| nome_fornecedor | VARCHAR | 100 | |
-| pk_codigo_item | VARCHAR | 20 | |
-| descricao_item | VARCHAR | 100 | |
-| pk_codigo_grupo_item | INTEGER | | |
-| nome_grupo_item | VARCHAR | 100 | |
-| unidades_por_compra | DOUBLE | | |
-| quantidade_total | DOUBLE | | |
-| valor_total | DOUBLE | | |
-| preco_medio | DOUBLE | | |
-| quantidade_unidade_basica | DOUBLE | | |
-| preco_medio_unidade_basica | DOUBLE | | |
-| flag_validacao_comissao | VARCHAR | 1 | |
-| centro_apuracao | VARCHAR | 20 | |
-| periodo | VARCHAR | 10 | |
-| status_documento | VARCHAR | 1 | |
+Configuração de coluna:
+| Coluna | Tipo de Dados | Descrição |
+|---|---|---|
+| pk_numero_documento | VARCHAR(20) | Número do documento. |
+| data_documento | DATE | Data do documento. |
+| data_vencimento | DATE | Data de vencimento. |
+| pk_codigo_fornecedor | VARCHAR(15) | Código do fornecedor. |
+| nome_fornecedor | VARCHAR(100) | Nome do fornecedor. |
+| pk_codigo_item | VARCHAR(20) | Código do item. |
+| descricao_item | VARCHAR(100) | Descrição do item. |
+| pk_codigo_grupo_item | INTEGER | Código do grupo de itens. |
+| nome_grupo_item | VARCHAR(100) | Nome do grupo de itens. |
+| unidades_por_compra | DOUBLE | Unidades por compra. |
+| quantidade_total | DOUBLE | Quantidade total do item. |
+| valor_total | DOUBLE | Valor total da linha. |
+| preco_medio | DOUBLE | Preço médio do item. |
+| quantidade_unidade_basica | DOUBLE | Quantidade na unidade básica. |
+| preco_medio_unidade_basica | DOUBLE | Preço médio na unidade básica. |
+| flag_validacao_comissao | VARCHAR(1) | Flag de validação de comissão. |
+| centro_apuracao | VARCHAR(20) | Centro de apuração. |
+| periodo | VARCHAR(10) | Período (Mês/Ano). |
+| status_documento | VARCHAR(1) | Status do documento. |
 */
 SELECT
     T0."DocNum" AS "pk_numero_documento",
@@ -218,3 +218,75 @@ GROUP BY
     T3."ValidComm",
     (TO_NVARCHAR(MONTH(T0."DocDate")) || ' - ' || TO_NVARCHAR(YEAR(T0."DocDate"))),
     T0."DocStatus";
+
+
+-- - Título: Pedido de Compra de Matéria Prima - RDU por Data de Lançamento
+-- - Consulta - Esta view exibe os detalhes de pedidos de compra de matéria prima para a unidade RDU, filtrados por data de lançamento,
+-- Título: Pedido de Compra de Matéria Prima - RDU por Data de Lançamento
+-- Consulta - Esta view exibe os detalhes de pedidos de compra de matéria prima para a unidade RDU, filtrados por data de lançamento,
+-- incluindo informações de fornecedor, item, grupo de item e centro de apuração, excluindo documentos cancelados e devoluções pagas.
+
+/*
+Configuração de coluna:
+| Coluna | Tipo de Dados | Descrição |
+|---|---|---|
+| DocEntry | INTEGER | Identificador do documento. |
+| DocNum | INTEGER | Número do documento. |
+| DocDate | DATE | Data do documento. |
+| CardCode | VARCHAR(15) | Código do parceiro de negócios. |
+| CardName | VARCHAR(100) | Nome do parceiro de negócios. |
+| ItemCode | VARCHAR(20) | Código do item. |
+| Dscription | VARCHAR(100) | Descrição do item. |
+| Quantity | DOUBLE | Quantidade do item. |
+| Price | DOUBLE | Preço unitário. |
+| LineTotal | DOUBLE | Valor total da linha. |
+| CodigoUsoLinha | INTEGER | Código de utilização da linha. |
+| DescricaoUso | VARCHAR(100) | Descrição da utilização. |
+| ItmsGrpCod | INTEGER | Código do grupo de itens. |
+| ItmsGrpNam | VARCHAR(100) | Nome do grupo de itens. |
+| DocTotal | DOUBLE | Valor total do documento. |
+| BPLId | INTEGER | Identificador da filial. |
+| BPLName | VARCHAR(100) | Nome da filial. |
+| CodigoDepositoLinha | VARCHAR(8) | Código do depósito. |
+| Centro_Apuracao | VARCHAR(30) | Centro de apuração. |
+*/
+SELECT
+    T0."DocEntry",
+    T0."DocNum",
+    T0."DocDate",
+    T0."CardCode",
+    T0."CardName",
+    T1."ItemCode",
+    T1."Dscription",
+    T1."Quantity",
+    T1."Price",
+    T1."LineTotal",
+    T1."Usage" AS "CodigoUsoLinha",
+    T4."Usage" AS "DescricaoUso",
+    T2."ItmsGrpCod",
+    T3."ItmsGrpNam",
+    T0."DocTotal",
+    T0."BPLId",
+    T0."BPLName",
+    T1."WhsCode" AS "CodigoDepositoLinha",
+    CASE
+        WHEN (T0."BPLId" IN (5, 8)) OR (T1."WhsCode" LIKE '05%' OR T1."WhsCode" LIKE '08%') THEN 'RDU / PARANÁ / FARMS'
+        ELSE 'Outro Centro de Apuração'
+    END AS "Centro_Apuracao"
+FROM
+    OPOR T0
+INNER JOIN
+    POR1 T1 ON T0."DocEntry" = T1."DocEntry"
+INNER JOIN
+    OITM T2 ON T1."ItemCode" = T2."ItemCode"
+INNER JOIN
+    OITB T3 ON T2."ItmsGrpCod" = T3."ItmsGrpCod"
+LEFT JOIN
+    OUSG T4 ON T1."Usage" = T4."ID"
+WHERE
+    T0."DocDate" BETWEEN :p_data_inicial AND :p_data_final
+    AND T0."CANCELED" = 'N'
+    AND T1."Usage" IN (19, 47)
+    AND T1."Usage" <> 50 -- Ignorar Devolução Paga
+    AND T2."ItmsGrpCod" IN (119, 120, 121, 122, 123, 124, 125, 131, 137)
+    AND ((T0."BPLId" IN (5, 8)) OR (T1."WhsCode" LIKE '05%' OR T1."WhsCode" LIKE '08%'));
