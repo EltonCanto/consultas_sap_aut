@@ -11,7 +11,7 @@
 --    - É OBRIGATÓRIO usar o padrão snake_case para identificadores.
 --    - É OBRIGATÓRIO na cláusula WHERE utilizar ":" antes da variável, conforme exemplo: T0."UpdateDate">=ADD_DAYS(CURRENT_DATE,:variavel_da_consulta).
 -- 2. CAIXA ALTA: Mantenha as palavras-chave do SQL (SELECT, FROM, INNER JOIN, WHERE, etc.) e os nomes das tabelas nativas do SAP (OPCH, PCH1, OITM) sempre em letras MAIÚSCULAS.
--- 3. PARÂMETROS E CONVERSÃO: Caso a consulta original possua variáveis no padrão de interface SAP B1 (ex: [%0], [%1]), você DEVE convertê-las OBRIGATORIAMENTE para parâmetros dinâmicos no padrão HANA usando dois pontos (ex: :p_data_inicial, :p_data_final, :p_codigo_cliente). NUNCA rejeite a requisição afirmando que o formato [%0] é inválido para a view, apenas faça a conversão silenciosamente.
+-- 3. PARÂMETROS E CONVERSÃO (CALCULATION VIEW / QUERY GENERATOR): Caso a consulta original possua variáveis no padrão SAP B1 (ex: [%0], [%1]), converta-as OBRIGATORIAMENTE para parâmetros dinâmicos HANA (ex: :p_data_inicial). Assuma que a estrutura final será usada como Calculation View do HANA ou no Query Generator, o que torna o uso de parâmetros na definição TOTALMENTE VÁLIDO. NUNCA diga que "Views não aceitam parâmetros", e mantenha os filtros e parâmetros no WHERE.
 -- 4. FUNÇÕES HIERÁRQUICAS: Utilize funções nativas do HANA como CURRENT_DATE, ADD_DAYS(), TO_VARCHAR(), e estruturas condicionais (CASE WHEN... THEN... ELSE... END) sempre que necessário para tratar nulos ou conversões.
 -- 5. NOMENCLATURA DE ALIASES (Padrão de Negócio):
 --    - Chaves Primárias, Estrangeiras ou Identificadores de Negócio vitais devem receber o prefixo "Pk_" (ex: "Pk_documento", "Pk_item", "Pk_filial").
