@@ -11,8 +11,9 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
     volumes:
       - db_data:/app/data
-      - ./knowledge_base:/app/knowledge_base
+      - kb_data:/app/knowledge_base
     restart: unless-stopped
 
 volumes:
   db_data:
+  kb_data:
