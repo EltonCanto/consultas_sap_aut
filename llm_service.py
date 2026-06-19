@@ -4,8 +4,9 @@ from google.genai import types
 from dotenv import load_dotenv
 from kb_manager import get_business_rules
 import re
+from openai import OpenAI
 
-load_dotenv()
+load_dotenv(override=True)
 
 def get_client():
     api_key = os.getenv("GEMINI_API_KEY")
@@ -13,12 +14,16 @@ def get_client():
         raise ValueError("Chave API do Gemini não configurada.")
     return genai.Client(api_key=api_key)
 
-def generate_sap_code(user_prompt: str, tipo: str, contexto_modelos: str, chat_history: list = None) -> str:
+def get_openrouter_client():
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key or api_key == "sua_chave_openrouter_aqui":
+        raise ValueError("Chave API do OpenRouter não configurada.")
+    return OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
+
+def generate_sap_code(user_prompt: str, tipo: str, contexto_modelos: str, chat_history: list = None, provider: str = "Gemini (Padrão)") -> str:
     """
-    Gera código SQL ou View para SAP B1 usando Gemini com Google Search Grounding.
+    Gera código SQL ou View para SAP B1 usando Gemini com Google Search Grounding ou OpenRouter.
     """
-    client = get_client()
-    model_name = 'gemini-2.5-flash' # atualizado para modelo disponível no plano gratuito
     regras_negocio = get_business_rules()
     
     system_instruction = f"""Você é um especialista em SAP Business One (SAP B1).
@@ -34,9 +39,10 @@ REGRAS DE CONTEXTO E GERAÇÃO:
 {contexto_modelos}
 --- FIM DOS MODELOS ---
 
-3. Se a informação não estiver clara nos modelos, você deve usar a ferramenta de Pesquisa no Google para buscar na documentação oficial do SAP B1.
+3. Se a informação não estiver clara nos modelos, você deve usar a ferramenta de Pesquisa no Google para buscar na documentação oficial do SAP B1. (Se não tiver acesso à web, use seu melhor conhecimento sobre SAP B1).
 4. Use o padrão exigido: "-- Título: ??? - Consulta - Descrição" no topo do seu código como comentário.
 5. REGRAS DE ESTRUTURA DO CÓDIGO E PARÂMETROS (CRÍTICO):
+   - OBRIGATÓRIO (NOMENCLATURA): TODOS os ALIASES (apelidos) de colunas no seu comando SELECT e na tabela de "Configuração de coluna" DEVEM estar EXCLUSIVAMENTE em formato snake_case (ex: T0."AcctCode" AS "codigo_da_conta"). É EXPRESSAMENTE PROIBIDO gerar aliases com espaços (ex: "Código da Conta").
    - Se for gerar uma Consulta SQL, forneça apenas o comando SELECT. PARA FILTROS DINÂMICOS, USE OBRIGATORIAMENTE O PADRÃO DO SAP B1 QUERY GENERATOR: [%0], [%1], [%2], etc. NUNCA use parâmetros nomeados (ex: :p_data) em consultas SQL.
    - Se for gerar uma View, É EXPRESSAMENTE PROIBIDO utilizar o comando `CREATE VIEW ... AS`. A sua resposta DEVE seguir fielmente o padrão dos exemplos: contendo OBRIGATORIAMENTE a tabela Markdown de "Configuração de coluna" dentro de um bloco de comentários `/* ... */`, seguida imediatamente pela instrução SELECT (sem nenhum CREATE VIEW). Nesses casos de View, os filtros com [%0] devem ser CONVERTIDOS para parâmetros nomeados como :p_data_inicial.
 6. IMPORTANTE: Você DEVE retornar o código final SEMPRE dentro de um bloco markdown de código (```sql ... ```). Forneça uma breve explicação antes do bloco de código se necessário.
@@ -53,40 +59,71 @@ Regras Aplicadas:
 </AUDITORIA>
 """
 
-    contents = []
-    
-    # Adicionar histórico se existir (Limitado às últimas 4 mensagens para economizar tokens)
-    if chat_history:
-        for msg in chat_history[-4:]:
-            role = 'user' if msg['role'] == 'user' else 'model'
-            # Evitar enviar tags de auditoria no histórico se houver
-            clean_content = re.sub(r'<AUDITORIA>.*?</AUDITORIA>', '', msg['content'], flags=re.DOTALL | re.IGNORECASE)
-            contents.append(types.Content(role=role, parts=[types.Part.from_text(text=clean_content)]))
-            
-    # Adicionar o prompt atual
-    contents.append(types.Content(role='user', parts=[types.Part.from_text(text=user_prompt)]))
+    if provider == "OpenRouter":
+        client = get_openrouter_client()
+        model_name = os.getenv("OPENROUTER_MODEL", "anthropic/claude-3.5-sonnet")
+        
+        messages = [{"role": "system", "content": system_instruction}]
+        
+        if chat_history:
+            for msg in chat_history[-4:]:
+                # No openrouter/openai, o role do LLM é 'assistant'
+                role = 'assistant' if msg['role'] == 'model' else 'user'
+                clean_content = re.sub(r'<AUDITORIA>.*?</AUDITORIA>', '', msg['content'], flags=re.DOTALL | re.IGNORECASE)
+                messages.append({"role": role, "content": clean_content})
+                
+        messages.append({"role": "user", "content": user_prompt})
+        
+        import time
+        for attempt in range(3):
+            try:
+                response = client.chat.completions.create(
+                    model=model_name,
+                    messages=messages,
+                    temperature=0.2
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                error_msg = str(e)
+                if ("429" in error_msg or "503" in error_msg) and attempt < 2:
+                    time.sleep(5)
+                else:
+                    raise e
+    else:
+        # Fluxo original (Gemini)
+        client = get_client()
+        model_name = 'gemini-2.5-flash'
+        contents = []
+        
+        if chat_history:
+            for msg in chat_history[-4:]:
+                role = 'user' if msg['role'] == 'user' else 'model'
+                clean_content = re.sub(r'<AUDITORIA>.*?</AUDITORIA>', '', msg['content'], flags=re.DOTALL | re.IGNORECASE)
+                contents.append(types.Content(role=role, parts=[types.Part.from_text(text=clean_content)]))
+                
+        contents.append(types.Content(role='user', parts=[types.Part.from_text(text=user_prompt)]))
 
-    config = types.GenerateContentConfig(
-        system_instruction=system_instruction,
-        temperature=0.2,
-        tools=[types.Tool(google_search=types.GoogleSearch())]
-    )
+        config = types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            temperature=0.2,
+            tools=[types.Tool(google_search=types.GoogleSearch())]
+        )
 
-    import time
-    for attempt in range(3):
-        try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=contents,
-                config=config
-            )
-            return response.text
-        except Exception as e:
-            error_msg = str(e)
-            if ("429" in error_msg or "503" in error_msg) and attempt < 2:
-                time.sleep(35) # Espera 35 segundos para a cota ser resetada ou aliviar a demanda
-            else:
-                raise e
+        import time
+        for attempt in range(3):
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=contents,
+                    config=config
+                )
+                return response.text
+            except Exception as e:
+                error_msg = str(e)
+                if ("429" in error_msg or "503" in error_msg) and attempt < 2:
+                    time.sleep(35)
+                else:
+                    raise e
 
 def extract_code_and_metadata(response_text: str):
     """

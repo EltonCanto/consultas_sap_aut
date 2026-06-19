@@ -23,8 +23,13 @@ def clear_state():
     if "show_save_form" in st.session_state:
         st.session_state["show_save_form"] = False
 
-# Configurações na barra lateral
-tipo = st.radio("O que você deseja gerar?", ["SQL", "View"], horizontal=True, on_change=clear_state)
+# Configurações de Geração
+col_cfg1, col_cfg2 = st.columns(2)
+with col_cfg1:
+    tipo = st.radio("O que você deseja gerar?", ["SQL", "View"], horizontal=True, on_change=clear_state)
+with col_cfg2:
+    provider = st.radio("Escolha a Inteligência Artificial:", ["Gemini (Padrão)", "OpenRouter"], horizontal=True)
+st.divider()
 
 # Histórico da conversa
 if "messages" not in st.session_state:
@@ -49,7 +54,7 @@ if prompt := st.chat_input("Descreva a consulta ou view que você precisa..."):
     with st.chat_message("model"):
         with st.spinner("Analisando pedido e buscando contexto (isso pode levar alguns segundos)..."):
             try:
-                resposta = generate_sap_code(prompt, tipo, contexto, st.session_state.messages[:-1])
+                resposta = generate_sap_code(prompt, tipo, contexto, st.session_state.messages[:-1], provider)
                 
                 # Extrair código e metadados para facilitar cópia/salvamento
                 titulo, descricao, codigo, auditoria, resposta_limpa = extract_code_and_metadata(resposta)
